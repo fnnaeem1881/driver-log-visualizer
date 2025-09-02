@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Log Viewer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            padding: 30px;
+            overflow: hidden;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eaeaea;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.2rem;
+        }
+        .upload-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+            border: 2px dashed #ddd;
+            transition: all 0.3s;
+        }
+        .upload-section:hover {
+            border-color: #3498db;
+            background: #f0f8ff;
+        }
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 15px 0;
+        }
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .file-input-button {
+            display: inline-block;
+            padding: 14px 28px;
+            background: #3498db;
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1.1rem;
+        }
+        .file-input-button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .file-name {
+            margin-top: 15px;
+            font-style: italic;
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        .instructions {
+            background: #e8f4fc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            font-size: 1rem;
+            border-left: 5px solid #3498db;
+        }
+        .instructions h3 {
+            color: #3498db;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        .instructions ul {
+            margin-left: 25px;
+        }
+        .instructions li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .instructions code {
+            background: #f1f1f1;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.95rem;
+            margin-top: 20px;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            text-align: left;
+            padding: 14px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+        }
+        th:hover {
+            background-color: #2980b9;
+        }
+        th::after {
+            content: '↕';
+            position: absolute;
+            right: 10px;
+            opacity: 0.7;
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        tr:hover {
+            background-color: #f1f8ff;
+        }
+        .status-active {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .status-inactive {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eaeaea;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 15px;
+            font-size: 1.1rem;
+        }
+        .stat-value {
+            font-weight: bold;
+            margin-left: 8px;
+            font-size: 1.3rem;
+        }
+        .json-format {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .table-container {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .analysis-section {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        .analysis-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .filter-group {
+            flex: 1;
+            min-width: 250px;
+            max-width: 300px;
+        }
+        .filter-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .filter-group select,
+        .filter-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #219653;
+        }
+        .charts-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .chart {
+            flex: 1;
+            min-width: 350px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .chart h4 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        .chart-content {
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        .pagination button {
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+        .pagination button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .pagination span {
+            padding: 8px 16px;
+            font-weight: bold;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+        
+        /* Heatmap Styles */
+        .heatmap-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+        .heatmap {
+            display: grid;
+            grid-template-columns: 60px repeat(24, 1fr);
+            gap: 2px;
+            margin-top: 15px;
+        }
+        .heatmap-header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .heatmap-hour-label {
+            background-color: #ecf0f1;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .heatmap-cell {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .heatmap-cell:hover {
+            transform: scale(1.05);
+            z-index: 2;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        .heatmap-legend {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border-radius: 3px;
+        }
+        .legend-label {
+            font-size: 14px;
+        }
+        .heatmap-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            max-width: 200px;
+        }
+        
+        /* Map Styles */
+        .map-container {
+            height: 500px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        .map-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .map-legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .map-legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        
+        /* Redzone heatmap colors */
+        .activity-level-0 { background-color: #f8f9fa; color: #333; } /* No activity */
+        .activity-level-1 { background-color: #ffebee; } /* Very low activity */
+        .activity-level-2 { background-color: #ffcdd2; } /* Low activity */
+        .activity-level-3 { background-color: #ef9a9a; } /* Medium-low activity */
+        .activity-level-4 { background-color: #e57373; } /* Medium activity */
+        .activity-level-5 { background-color: #ef5350; } /* Medium-high activity */
+        .activity-level-6 { background-color: #f44336; } /* High activity */
+        .activity-level-7 { background-color: #d32f2f; } /* Very high activity */
+        .activity-level-8 { background-color: #c62828; } /* Extreme activity */
+        .activity-level-9 { background-color: #b71c1c; } /* Maximum activity */
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            .stats-bar {
+                flex-direction: column;
+                align-items: center;
+            }
+            .stat-item {
+                margin: 10px 0;
+            }
+            .filters {
+                flex-direction: column;
+            }
+            .chart {
+                min-width: 100%;
+            }
+            .heatmap {
+                grid-template-columns: 50px repeat(12, 1fr);
+            }
+            .heatmap-hour-label {
+                writing-mode: vertical-lr;
+                transform: rotate(180deg);
+                text-align: center;
+            }
+            .filter-group {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Driver Log Viewer</h1>
+            <p class="subtitle">Upload and analyze driver log files in JSON format</p>
+        </header>
+
+        <section class="upload-section">
+            <h2>Upload Driver Log File</h2>
+            <div class="file-input-wrapper">
+                <div class="file-input-button">Choose JSON Log File</div>
+                <input type="file" id="logFile" accept=".log,.txt,.json">
+            </div>
+            <div class="file-name" id="fileName">No file chosen</div>
+        </section>
+
+        <div class="stats-bar" id="statsBar" style="display: none;">
+            <div class="stat-item">Total Records: <span class="stat-value" id="totalRecords">0</span></div>
+            <div class="stat-item">Active Drivers: <span class="stat-value" id="activeDrivers">0</span></div>
+            <div class="stat-item">Inactive Drivers: <span class="stat-value" id="inactiveDrivers">0</span></div>
+            <div class="stat-item">Unique Drivers: <span class="stat-value" id="uniqueDrivers">0</span></div>
+        </div>
+
+        <div class="analysis-section" id="analysisSection" style="display: none;">
+            <h3>Data Analysis & Filtering</h3>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="viewType">View Type:</label>
+                    <select id="viewType">
+                        <option value="all">All Records</option>
+                        <option value="unique">Unique Drivers (Latest Status)</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="driverFilter">Filter by Driver:</label>
+                    <select id="driverFilter">
+                        <option value="all">All Drivers</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="statusFilter">Filter by Status:</label>
+                    <select id="statusFilter">
+                        <option value="all">All Status</option>
+                        <option value="active">Active Only</option>
+                        <option value="inactive">Inactive Only</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="dateFrom">Date From:</label>
+                    <input type="text" id="dateFrom" placeholder="Select start date">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="dateTo">Date To:</label>
+                    <input type="text" id="dateTo" placeholder="Select end date">
+                </div>
+            </div>
+            
+            <div class="filter-buttons">
+                <button class="btn btn-primary" id="applyFilters">Apply Filters</button>
+                <button class="btn btn-secondary" id="resetFilters">Reset Filters</button>
+                <button class="btn btn-primary" id="exportData">Export Filtered Data</button>
+                <button class="btn btn-success" id="showOnMap">Show on Map</button>
+            </div>
+            
+            <div class="tabs">
+                <div class="tab active" data-tab="charts">Charts</div>
+                <div class="tab" data-tab="map">Map View</div>
+            </div>
+            
+            <div class="tab-content active" id="chartsTab">
+                <div class="charts-container">
+                    <div class="chart">
+                        <h4>Activity Status Distribution</h4>
+                        <div class="chart-content" id="statusChart">
+                            <canvas id="statusChartCanvas"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart">
+                        <h4>Records by Driver (Top 10)</h4>
+                        <div class="chart-content" id="driverChart">
+                            <canvas id="driverChartCanvas"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart">
+                        <h4>Activity Heatmap by Hour</h4>
+                        <div class="chart-content" id="timeChart">
+                            <div id="heatmapContainer" class="heatmap-container">
+                                <div id="heatmap" class="heatmap"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="mapTab">
+                <div class="map-controls">
+                    <div class="filter-group">
+                        <label for="mapViewType">Map View:</label>
+                        <select id="mapViewType">
+                            <option value="markers">Individual Markers</option>
+                            <option value="clusters">Marker Clusters</option>
+                            <option value="heatmap">Heatmap Density</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" id="updateMap">Update Map</button>
+                </div>
+                <div class="map-container">
+                    <div id="map"></div>
+                </div>
+                <div class="map-legend">
+                    <h4>Map Legend</h4>
+                    <div class="map-legend-item">
+                        <div class="map-legend-color" style="background-color: #27ae60;"></div>
+                        <span>Active Driver</span>
+                    </div>
+                    <div class="map-legend-item">
+                        <div class="map-legend-color" style="background-color: #e74c3c;"></div>
+                        <span>Inactive Driver</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading" id="loadingIndicator">
+            <p>Processing data... Please wait.</p>
+        </div>
+
+        <div class="table-container">
+            <table id="driverTable">
+                <thead>
+                    <tr>
+                        <th data-sort="driverID">driverID</th>
+                        <th data-sort="mobile">mobile</th>
+                        <th data-sort="name">name</th>
+                        <th data-sort="lat">lat</th>
+                        <th data-sort="long">long</th>
+                        <th data-sort="active">active</th>
+                        <th data-sort="timestamp">timestamp</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Data will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination" id="pagination" style="display: none;">
+            <button id="prevPage">Previous</button>
+            <span id="pageInfo">Page 1 of 1</span>
+            <button id="nextPage">Next</button>
+        </div>
+
+        <footer>
+            <p>Driver Log Viewer &copy; 2023 | Upload a JSON log file to view driver data</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script>
+        // Global variables
+        let allRecords = [];
+        let filteredRecords = [];
+        let currentPage = 1;
+        let rowsPerPage = 20;
+        let sortField = 'driverID';
+        let sortDirection = 'asc';
+        let statusChart = null;
+        let driverChart = null;
+        let tooltip = null;
+        let map = null;
+        let markers = null;
+        let markerCluster = null;
+        let heatmapLayer = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create tooltip element
+            tooltip = document.createElement('div');
+            tooltip.className = 'heatmap-tooltip';
+            document.body.appendChild(tooltip);
+            
+            // Initialize date pickers
+            flatpickr("#dateFrom", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                time_24hr: true,
+                allowInput: true
+            });
+            
+            flatpickr("#dateTo", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                time_24hr: true,
+                allowInput: true
+            });
+
+            // Tab functionality
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Remove active class from all tabs and content
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked tab and corresponding content
+                    this.classList.add('active');
+                    document.getElementById(this.getAttribute('data-tab') + 'Tab').classList.add('active');
+                });
+            });
+
+            // Update file name display
+            document.getElementById('logFile').addEventListener('change', function(e) {
+                const fileName = e.target.files[0]?.name || 'No file chosen';
+                document.getElementById('fileName').textContent = fileName;
+            });
+
+            // File upload handling
+            document.getElementById("logFile").addEventListener("change", function(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                // Show loading indicator
+                document.getElementById('loadingIndicator').style.display = 'block';
+                
+                // Use setTimeout to allow the UI to update before processing
+                setTimeout(function() {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const content = e.target.result;
+                        const lines = content.split("\n");
+                        allRecords = [];
+                        
+                        // Parse each line as JSON
+                        for (let i = 0; i < lines.length; i++) {
+                            const line = lines[i].trim();
+                            if (!line) continue;
+                            
+                            try {
+                                const record = JSON.parse(line);
+                                // Convert timestamp to Date object for easier filtering
+                                if (record.timestamp) {
+                                    record.timestampObj = new Date(record.timestamp);
+                                    // Extract date components for heatmap
+                                    record.hour = record.timestampObj.getHours();
+                                    record.dateStr = record.timestampObj.toISOString().split('T')[0];
+                                }
+                                allRecords.push(record);
+                            } catch (error) {
+                                console.error("Error parsing JSON on line " + (i+1) + ":", error, line);
+                            }
+                        }
+                        
+                        // Initialize the table and filters
+                        initTableAndFilters();
+                        
+                        // Hide loading indicator
+                        document.getElementById('loadingIndicator').style.display = 'none';
+                    };
+
+                    reader.readAsText(file);
+                }, 100);
+            });
+
+            // Filter event handlers
+            document.getElementById('applyFilters').addEventListener('click', applyFilters);
+            document.getElementById('resetFilters').addEventListener('click', resetFilters);
+            document.getElementById('exportData').addEventListener('click', exportData);
+            document.getElementById('showOnMap').addEventListener('click', function() {
+                document.querySelector('.tab[data-tab="map"]').click();
+                updateMap();
+            });
+            document.getElementById('updateMap').addEventListener('click', updateMap);
+            
+            // View type change handler
+            document.getElementById('viewType').addEventListener('change', applyFilters);
+            
+            // Pagination handlers
+            document.getElementById('prevPage').addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderTable();
+                }
+            });
+            
+            document.getElementById('nextPage').addEventListener('click', function() {
+                const totalPages = Math.ceil(filteredRecords.length / rowsPerPage);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderTable();
+                }
+            });
+            
+            // Sort handlers
+            document.querySelectorAll('th[data-sort]').forEach(th => {
+                th.addEventListener('click', function() {
+                    const field = this.getAttribute('data-sort');
+                    
+                    if (sortField === field) {
+                        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortField = field;
+                        sortDirection = 'asc';
+                    }
+                    
+                    sortData();
+                    renderTable();
+                });
+            });
+
+            function initTableAndFilters() {
+                // Update stats
+                updateStats(allRecords);
+                
+                // Populate driver filter
+                populateDriverFilter();
+                
+                // Initialize filtered records
+                filteredRecords = [...allRecords];
+                
+                // Sort and render table
+                sortData();
+                renderTable();
+                
+                // Create charts
+                createCharts(allRecords);
+                
+                // Initialize map
+                initMap();
+                
+                // Show analysis section and pagination
+                document.getElementById('analysisSection').style.display = 'block';
+                document.getElementById('pagination').style.display = 'flex';
+                document.getElementById('statsBar').style.display = 'flex';
+            }
+
+            function initMap() {
+                // Initialize map if not already initialized
+                if (!map) {
+                    map = L.map('map').setView([23.8103, 90.4125], 10); // Default to Dhaka, Bangladesh
+                    
+                    // Add OpenStreetMap tile layer
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }).addTo(map);
+                } else {
+                    // Clear existing layers
+                    map.eachLayer(function(layer) {
+                        if (layer instanceof L.TileLayer) return; // Keep base tiles
+                        map.removeLayer(layer);
+                    });
+                }
+                
+                // Initialize marker cluster group if needed
+                if (markerCluster) {
+                    markerCluster.clearLayers();
+                } else {
+                    markerCluster = L.markerClusterGroup();
+                }
+                
+                // Initialize markers layer
+                markers = L.layerGroup().addTo(map);
+            }
+
+            function updateMap() {
+                if (!map) initMap();
+                
+                // Clear existing markers and layers
+                markers.clearLayers();
+                if (markerCluster) map.removeLayer(markerCluster);
+                if (heatmapLayer) map.removeLayer(heatmapLayer);
+                
+                const mapViewType = document.getElementById('mapViewType').value;
+                const hasLocationData = filteredRecords.some(record => record.lat && record.long);
+                
+                if (!hasLocationData) {
+                    alert('No location data available to display on map.');
+                    return;
+                }
+                
+                // Filter records with valid coordinates
+                const mappedRecords = filteredRecords.filter(record => 
+                    record.lat && record.long && 
+                    !isNaN(parseFloat(record.lat)) && !isNaN(parseFloat(record.long))
+                );
+                
+                if (mappedRecords.length === 0) {
+                    alert('No valid location data available to display on map.');
+                    return;
+                }
+                
+                if (mapViewType === 'heatmap') {
+                    // Create heatmap layer
+                    const points = mappedRecords.map(record => [
+                        parseFloat(record.lat),
+                        parseFloat(record.long),
+                        0.5 // intensity
+                    ]);
+                    
+                    heatmapLayer = L.heatLayer(points, {
+                        radius: 25,
+                        blur: 15,
+                        maxZoom: 17,
+                        gradient: {
+                            0.4: 'blue',
+                            0.6: 'cyan',
+                            0.7: 'lime',
+                            0.8: 'yellow',
+                            1.0: 'red'
+                        }
+                    }).addTo(map);
+                    
+                    // Fit map to heatmap bounds
+                    const bounds = points.reduce((bounds, point) => {
+                        return bounds.extend([point[0], point[1]]);
+                    }, L.latLngBounds([]));
+                    
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                    
+                } else {
+                    // Add markers to map
+                    mappedRecords.forEach(record => {
+                        const lat = parseFloat(record.lat);
+                        const lng = parseFloat(record.long);
+                        
+                        // Create custom icon based on status
+                        const icon = L.divIcon({
+                            className: 'custom-marker',
+                            html: `<div style="background-color: ${record.active ? '#27ae60' : '#e74c3c'}; 
+                                    width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;
+                                    box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>`,
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        });
+                        
+                        const marker = L.marker([lat, lng], { icon: icon });
+                        
+                        // Add popup with driver information
+                        marker.bindPopup(`
+                            <strong>Driver:</strong> ${record.name || 'N/A'}<br>
+                            <strong>ID:</strong> ${record.driverID || 'N/A'}<br>
+                            <strong>Status:</strong> ${record.active ? 'Active' : 'Inactive'}<br>
+                            <strong>Time:</strong> ${record.timestamp || 'N/A'}<br>
+                            <strong>Location:</strong> ${lat.toFixed(6)}, ${lng.toFixed(6)}
+                        `);
+                        
+                        if (mapViewType === 'clusters') {
+                            markerCluster.addLayer(marker);
+                        } else {
+                            markers.addLayer(marker);
+                        }
+                    });
+                    
+                    // Add appropriate layer to map
+                    if (mapViewType === 'clusters') {
+                        map.addLayer(markerCluster);
+                    }
+                    
+                    // Fit map to show all markers
+                    const group = mapViewType === 'clusters' ? markerCluster : markers;
+                    map.fitBounds(group.getBounds(), { padding: [50, 50] });
+                }
+            }
+
+            function populateDriverFilter() {
+                const driverFilter = document.getElementById('driverFilter');
+                driverFilter.innerHTML = '<option value="all">All Drivers</option>';
+                
+                // Get unique drivers
+                const uniqueDrivers = {};
+                allRecords.forEach(record => {
+                    const key = `${record.driverID}-${record.name}`;
+                    if (!uniqueDrivers[key]) {
+                        uniqueDrivers[key] = record;
+                    }
+                });
+                
+                // Add drivers to filter
+                Object.values(uniqueDrivers).forEach(driver => {
+                    const option = document.createElement('option');
+                    option.value = driver.driverID;
+                    option.textContent = `${driver.driverID} - ${driver.name}`;
+                    driverFilter.appendChild(option);
+                });
+            }
+
+            function renderTable() {
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = '';
+                
+                // Calculate pagination
+                const startIndex = (currentPage - 1) * rowsPerPage;
+                const endIndex = Math.min(startIndex + rowsPerPage, filteredRecords.length);
+                const pageRecords = filteredRecords.slice(startIndex, endIndex);
+                
+                if (pageRecords.length > 0) {
+                    pageRecords.forEach(record => {
+                        const row = document.createElement('tr');
+                        
+                        // Add each field to the row
+                        row.appendChild(createCell(record.driverID || 'N/F'));
+                        row.appendChild(createCell(record.mobile || 'N/F'));
+                        row.appendChild(createCell(record.name || 'N/F'));
+                        row.appendChild(createCell(record.lat || ''));
+                        row.appendChild(createCell(record.long || ''));
+                        
+                        // Format active status
+                        const activeCell = document.createElement('td');
+                        if (record.active) {
+                            activeCell.innerHTML = '<span class="status-active">Active</span>';
+                        } else {
+                            activeCell.innerHTML = '<span class="status-inactive">Inactive</span>';
+                        }
+                        row.appendChild(activeCell);
+                        
+                        row.appendChild(createCell(record.timestamp || ''));
+                        
+                        tbody.appendChild(row);
+                    });
+                } else {
+                    const row = document.createElement('tr');
+                    const cell = document.createElement('td');
+                    cell.colSpan = 7;
+                    cell.textContent = 'No records found';
+                    cell.style.textAlign = 'center';
+                    cell.style.padding = '20px';
+                    row.appendChild(cell);
+                    tbody.appendChild(row);
+                }
+                
+                // Update pagination info
+                const totalPages = Math.ceil(filteredRecords.length / rowsPerPage);
+                document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+                
+                // Disable/enable pagination buttons
+                document.getElementById('prevPage').disabled = currentPage === 1;
+                document.getElementById('nextPage').disabled = currentPage === totalPages || totalPages === 0;
+            }
+
+            function createCell(content) {
+                const cell = document.createElement('td');
+                cell.textContent = content || '';
+                return cell;
+            }
+
+            function applyFilters() {
+                let workingRecords = [...allRecords];
+                
+                // Apply view type filter (unique drivers or all records)
+                const viewType = document.getElementById('viewType').value;
+                if (viewType === 'unique') {
+                    // Get latest record for each driver
+                    const latestRecords = {};
+                    workingRecords.forEach(record => {
+                        const driverId = record.driverID;
+                        if (!latestRecords[driverId] || 
+                            (record.timestampObj && latestRecords[driverId].timestampObj < record.timestampObj)) {
+                            latestRecords[driverId] = record;
+                        }
+                    });
+                    workingRecords = Object.values(latestRecords);
+                }
+                
+                // Apply driver filter
+                const driverId = document.getElementById('driverFilter').value;
+                if (driverId !== 'all') {
+                    workingRecords = workingRecords.filter(record => record.driverID == driverId);
+                }
+                
+                // Apply status filter
+                const status = document.getElementById('statusFilter').value;
+                if (status === 'active') {
+                    workingRecords = workingRecords.filter(record => record.active === true);
+                } else if (status === 'inactive') {
+                    workingRecords = workingRecords.filter(record => record.active === false);
+                }
+                
+                // Apply date filters
+                const dateFrom = document.getElementById('dateFrom').value;
+                const dateTo = document.getElementById('dateTo').value;
+                
+                if (dateFrom) {
+                    const fromDate = new Date(dateFrom);
+                    workingRecords = workingRecords.filter(record => 
+                        record.timestampObj && record.timestampObj >= fromDate
+                    );
+                }
+                
+                if (dateTo) {
+                    const toDate = new Date(dateTo);
+                    workingRecords = workingRecords.filter(record => 
+                        record.timestampObj && record.timestampObj <= toDate
+                    );
+                }
+                
+                // Update filtered records
+                filteredRecords = workingRecords;
+                
+                // Reset to first page and render
+                currentPage = 1;
+                sortData();
+                renderTable();
+                
+                // Update stats
+                updateStats(filteredRecords);
+                
+                // Update charts
+                createCharts(filteredRecords);
+            }
+
+            function resetFilters() {
+                document.getElementById('viewType').value = 'all';
+                document.getElementById('driverFilter').value = 'all';
+                document.getElementById('statusFilter').value = 'all';
+                document.getElementById('dateFrom').value = '';
+                document.getElementById('dateTo').value = '';
+                document.getElementById('mapViewType').value = 'markers';
+                
+                // Reset to all records
+                filteredRecords = [...allRecords];
+                currentPage = 1;
+                sortData();
+                renderTable();
+                updateStats(allRecords);
+                createCharts(allRecords);
+                
+                // Update map if on map tab
+                if (document.getElementById('mapTab').classList.contains('active')) {
+                    updateMap();
+                }
+            }
+
+            function exportData() {
+                // Create CSV content
+                let csvContent = "data:text/csv;charset=utf-8,";
+                
+                // Add header row
+                const headers = ["Driver ID", "Mobile", "Name", "Latitude", "Longitude", "Status", "Timestamp"];
+                csvContent += headers.join(",") + "\r\n";
+                
+                // Add data rows
+                filteredRecords.forEach(record => {
+                    const status = record.active ? 'Active' : 'Inactive';
+                    const csvRow = [
+                        record.driverID || '',
+                        record.mobile || '',
+                        record.name || '',
+                        record.lat || '',
+                        record.long || '',
+                        status,
+                        record.timestamp || ''
+                    ];
+                    csvContent += csvRow.join(",") + "\r\n";
+                });
+                
+                // Create download link
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "driver_logs_filtered.csv");
+                document.body.appendChild(link);
+                
+                // Trigger download
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            function updateStats(records) {
+                document.getElementById('totalRecords').textContent = records.length;
+                
+                const activeCount = records.filter(r => r.active === true).length;
+                const inactiveCount = records.length - activeCount;
+                
+                // Get unique drivers count
+                const uniqueDriverIds = new Set(records.map(record => record.driverID));
+                
+                document.getElementById('activeDrivers').textContent = activeCount;
+                document.getElementById('inactiveDrivers').textContent = inactiveCount;
+                document.getElementById('uniqueDrivers').textContent = uniqueDriverIds.size;
+            }
+
+            function sortData() {
+                filteredRecords.sort((a, b) => {
+                    let valueA = a[sortField];
+                    let valueB = b[sortField];
+                    
+                    // Handle different data types for sorting
+                    if (typeof valueA === 'string' && typeof valueB === 'string') {
+                        return sortDirection === 'asc' 
+                            ? valueA.localeCompare(valueB)
+                            : valueB.localeCompare(valueA);
+                    }
+                    
+                    // For numbers and booleans
+                    if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
+                    if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            function createCharts(records) {
+                createStatusChart(records);
+                createDriverChart(records);
+                createHeatmap(records);
+            }
+
+            function createStatusChart(records) {
+                const ctx = document.getElementById('statusChartCanvas');
+                
+                // Destroy previous chart if exists
+                if (statusChart) {
+                    statusChart.destroy();
+                }
+                
+                const activeCount = records.filter(r => r.active === true).length;
+                const inactiveCount = records.length - activeCount;
+                
+                statusChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Active', 'Inactive'],
+                        datasets: [{
+                            data: [activeCount, inactiveCount],
+                            backgroundColor: ['#27ae60', '#e74c3c'],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            },
+                            title: {
+                                display: true,
+                                text: `Total: ${records.length} records`
+                            }
+                        }
+                    }
+                });
+            }
+
+            function createDriverChart(records) {
+                const ctx = document.getElementById('driverChartCanvas');
+                
+                // Destroy previous chart if exists
+                if (driverChart) {
+                    driverChart.destroy();
+                }
+                
+                // Count records by driver
+                const driverCounts = {};
+                records.forEach(record => {
+                    const key = `${record.driverID} - ${record.name}`;
+                    driverCounts[key] = (driverCounts[key] || 0) + 1;
+                });
+                
+                // Sort by count descending and take top 10
+                const sortedDrivers = Object.entries(driverCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10);
+                
+                const driverNames = sortedDrivers.map(item => item[0]);
+                const driverCountsData = sortedDrivers.map(item => item[1]);
+                
+                driverChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: driverNames,
+                        datasets: [{
+                            label: 'Records Count',
+                            data: driverCountsData,
+                            backgroundColor: '#3498db',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            function createHeatmap(records) {
+                const heatmap = document.getElementById('heatmap');
+                heatmap.innerHTML = '';
+                
+                // Group records by hour
+                const hourData = {};
+                for (let i = 0; i < 24; i++) {
+                    hourData[i] = { active: 0, inactive: 0, total: 0 };
+                }
+                
+                records.forEach(record => {
+                    if (record.hour !== undefined) {
+                        hourData[record.hour].total++;
+                        if (record.active) {
+                            hourData[record.hour].active++;
+                        } else {
+                            hourData[record.hour].inactive++;
+                        }
+                    }
+                });
+                
+                // Find max value for scaling
+                let maxTotal = 0;
+                for (let i = 0; i < 24; i++) {
+                    if (hourData[i].total > maxTotal) maxTotal = hourData[i].total;
+                }
+                
+                // Create header row
+                const headerRow = document.createElement('div');
+                headerRow.className = 'heatmap-header';
+                headerRow.textContent = 'Hour';
+                heatmap.appendChild(headerRow);
+                
+                for (let h = 0; h < 24; h++) {
+                    const headerCell = document.createElement('div');
+                    headerCell.className = 'heatmap-header';
+                    headerCell.textContent = h;
+                    heatmap.appendChild(headerCell);
+                }
+                
+                // Create data row
+                const dataRow = document.createElement('div');
+                dataRow.className = 'heatmap-hour-label';
+                dataRow.textContent = 'Activity';
+                heatmap.appendChild(dataRow);
+                
+                for (let h = 0; h < 24; h++) {
+                    const cell = document.createElement('div');
+                    
+                    // Calculate activity level (0-9)
+                    const activityLevel = maxTotal > 0 ? 
+                        Math.floor((hourData[h].total / maxTotal) * 9) : 0;
+                    
+                    cell.className = `heatmap-cell activity-level-${activityLevel}`;
+                    
+                    // Calculate inactive percentage for redzone intensity
+                    const inactivePercentage = hourData[h].total > 0 ? 
+                        (hourData[h].inactive / hourData[h].total) * 100 : 0;
+                    
+                    // Add tooltip content
+                    cell.setAttribute('data-hour', h);
+                    cell.setAttribute('data-total', hourData[h].total);
+                    cell.setAttribute('data-active', hourData[h].active);
+                    cell.setAttribute('data-inactive', hourData[h].inactive);
+                    cell.setAttribute('data-inactive-percent', `${inactivePercentage.toFixed(1)}%`);
+                    
+                    // Show count in cell if there's data
+                    if (hourData[h].total > 0) {
+                        cell.textContent = hourData[h].total;
+                    }
+                    
+                    // Add event listeners for tooltip
+                    cell.addEventListener('mousemove', function(e) {
+                        const tooltipText = `
+                            Hour: ${this.getAttribute('data-hour')}:00<br>
+                            Total: ${this.getAttribute('data-total')}<br>
+                            Active: ${this.getAttribute('data-active')}<br>
+                            Inactive: ${this.getAttribute('data-inactive')}<br>
+                            Inactive: ${this.getAttribute('data-inactive-percent')}
+                        `;
+                        tooltip.innerHTML = tooltipText;
+                        tooltip.style.left = `${e.pageX + 10}px`;
+                        tooltip.style.top = `${e.pageY + 10}px`;
+                        tooltip.style.opacity = '1';
+                    });
+                    
+                    cell.addEventListener('mouseleave', function() {
+                        tooltip.style.opacity = '0';
+                    });
+                    
+                    heatmap.appendChild(cell);
+                }
+                
+                // Add legend
+                const legendContainer = document.createElement('div');
+                legendContainer.style.gridColumn = '1 / span 25';
+                legendContainer.className = 'heatmap-legend';
+                
+                legendContainer.innerHTML = `
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #f8f9fa; border: 1px solid #ddd;"></div>
+                        <div class="legend-label">No Activity</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #ffebee;"></div>
+                        <div class="legend-label">Low Activity</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #ef9a9a;"></div>
+                        <div class="legend-label">Medium Activity</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #e57373;"></div>
+                        <div class="legend-label">High Activity</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #d32f2f;"></div>
+                        <div class="legend-label">Very High Activity</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #b71c1c;"></div>
+                        <div class="legend-label">Maximum Activity</div>
+                    </div>
+                `;
+                
+                heatmap.appendChild(legendContainer);
+            }
+        });
+    </script>
+</body>
+</html>
